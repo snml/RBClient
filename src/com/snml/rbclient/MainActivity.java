@@ -1,11 +1,5 @@
 package com.snml.rbclient;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,6 +41,8 @@ public class MainActivity extends Activity {
 	
 	private Activity self = this;
 	
+	private String secret = null;
+	
 	public void refresh(View view) {
 		//TextView textViewMain = (TextView) findViewById(R.id.textViewMain);
 		//textViewMain.setText("Привет!");
@@ -62,7 +58,6 @@ public class MainActivity extends Activity {
 			bRoute.setText("Взять");
 			llRoute.addView(bRoute);
 		}*/
-		int i = 1;
 		int step = 0;
 		// лог - begin
 		LinearLayout llRoute = new LinearLayout(this);
@@ -71,9 +66,9 @@ public class MainActivity extends Activity {
 		twRoute.setText("START");
 		llRoute.addView(twRoute);
 		// лог - end
-		String content = "";
+		//String content = "";
 		String urlStr = "http://m.rbtaxi.ru/order/";
-		HttpURLConnection urlConnection = null;
+		//HttpURLConnection urlConnection = null;
 		try {
 			step = 1;
 			/*URL url = new URL(urlStr);
@@ -104,15 +99,19 @@ public class MainActivity extends Activity {
 						while ((line = reader.readLine()) != null) {
 							content += line;
 						}*/
-						content = InetUtils.getUrlContent(urlStr);
-						if(content.indexOf("<table id=\"auth\" class=\"form\">") > -1) {
+						if(secret == null) {
+							secret = InetUtils.sendPost("auth_login=27688&auth_password=89854652386");
+						}
+						content = InetUtils.sendGet(urlStr, secret);
+						if((content == null) || (content.indexOf("<table id=\"auth\" class=\"form\">") > -1)) {
 							// нужна авторизация
 							//content = InetUtils.getUrlContent("http://m.rbtaxi.ru/order/?auth_login=27688&auth_password=89854652386");
 							//String urlParameters = "fName=" + URLEncoder.encode("???", "UTF-8") + "&lName=" + URLEncoder.encode("???", "UTF-8");
-							content = InetUtils.doPost("http://m.rbtaxi.ru/", "auth_login=27688&auth_password=89854652386");
+							/*content = InetUtils.doPost("http://m.rbtaxi.ru/", "auth_login=27688&auth_password=89854652386");
 							if(content.indexOf("<table id=\"auth\" class=\"form\">") == -1) {
 								content = InetUtils.getUrlContent(urlStr);
-							}
+							}*/
+							content = InetUtils.getLog();
 						}
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
@@ -126,6 +125,7 @@ public class MainActivity extends Activity {
 					if((result == null) || (result.isEmpty())) {
 						return;
 					}
+					int i = 1;
 					String content = result;
 					LinearLayout llRoutes = (LinearLayout) findViewById(R.id.LinearLayoutRoutes);
 					// лог - begin
@@ -133,62 +133,117 @@ public class MainActivity extends Activity {
 					llRoutes.addView(llRoute);
 					TextView twRoute = new TextView(self);
 					//twRoute.setText("content = " + content.substring(0, 100));
-					twRoute.setText("content = " + content);
+					//twRoute.setText("content = " + content);
+					twRoute.setText("BEGIN");
 					llRoute.addView(twRoute);
+					Button bRoute = new Button(self);
+					bRoute.setText("Взять");
+					llRoute.addView(bRoute);
 					// лог - end
 					String tableDelimeter = "<table id=\"terminal\">";
 					int tablePos = content.indexOf(tableDelimeter);
-					if(tablePos > -1) {
+					if(tablePos <= -1) {
+						// лог - begin
+						llRoute = new LinearLayout(self);
+						llRoutes.addView(llRoute);
+						twRoute = new TextView(self);
+						twRoute.setText("CAN'T FIND 1 : tableDelimeter = " + tableDelimeter);
+						llRoute.addView(twRoute);
+						// лог - end
+					} else {
 						String tableContent = content.substring(tablePos + tableDelimeter.length());
 						// лог - begin
 						llRoute = new LinearLayout(self);
 						llRoutes.addView(llRoute);
 						twRoute = new TextView(self);
-						twRoute.setText("tableContent = " + tableContent.substring(0, 100));
+						//twRoute.setText("tableContent = " + tableContent.substring(0, 100));
+						//twRoute.setText("content = " + content.substring(0, 200));
+						twRoute.setText("log = " + InetUtils.getLog().substring(0, 200));
 						llRoute.addView(twRoute);
 						// лог - end
-						/*String tableEndDelimeter = "</table>";
+						String tableEndDelimeter = "</table>";
 						int tableEndPos = tableContent.indexOf(tableEndDelimeter);
-						if(tableEndPos > -1) {
-							String routes = content.substring(0, tableEndPos - 1);
+						if(tableEndPos <= -1) {
+							// лог - begin
+							llRoute = new LinearLayout(self);
+							llRoutes.addView(llRoute);
+							twRoute = new TextView(self);
+							twRoute.setText("CAN'T FIND 2 : tableEndDelimeter = " + tableEndDelimeter);
+							llRoute.addView(twRoute);
+							// лог - end
+						} else {
+							String routes = tableContent.substring(0, tableEndPos);
+							// лог - begin
+							/*llRoute = new LinearLayout(self);
+							llRoutes.addView(llRoute);
+							twRoute = new TextView(self);
+							twRoute.setText("routes = " + routes);
+							llRoute.addView(twRoute);
+							*/
+							// лог - end
 							// парсим маршруты
-							String pattern = "<tbody class=\"order\" id=\"order-(\\d*)\">(.*)</tbody>";
-							Pattern r = Pattern.compile(pattern);
+							//String pattern = "<tbody class=\"order\" id=\"order-(\\d+)\">([^<]*)</tbody>";
+							String pattern = "<tbody class=\"order\" id=\"order-(\\d+)\">(.*?)</tbody>";
+							Pattern r = Pattern.compile(pattern, Pattern.DOTALL);
 							Matcher m = r.matcher(routes);
 							while (m.find()) {
 								String route_id = m.group(1);
 								String route = m.group(2);
-								if((route != null) && (!route.isEmpty())) {
+								// лог - begin
+								/*llRoute = new LinearLayout(self);
+								llRoutes.addView(llRoute);
+								twRoute = new TextView(self);
+								twRoute.setText("route_id = " + route_id + ", route = " + route);
+								llRoute.addView(twRoute);
+								*/
+								// лог - end
+								if((route == null) || (route.isEmpty())) {
+									// лог - begin
+									llRoute = new LinearLayout(self);
+									llRoutes.addView(llRoute);
+									twRoute = new TextView(self);
+									twRoute.setText("CAN'T FIND 3 : tableEndDelimeter = " + tableEndDelimeter);
+									llRoute.addView(twRoute);
+									// лог - end
+								} else {
 									// время
 									String time = null;
-									String patternTime = "<td class=\"time\">.*<a href=\"/order/view/\\d*\">(.*)</a>";
-									Pattern rTime = Pattern.compile(patternTime);
+									String patternTime = "<td class=\"time\">.*?<a href=\"/order/view/\\d*\">(.*?)</a>";
+									Pattern rTime = Pattern.compile(patternTime, Pattern.DOTALL);
 									Matcher mTime = rTime.matcher(route);
 									if(mTime.find()) {
 										time = mTime.group(1);
 									}
 									// адрес
 									String address = null;
-									String patternAddress = "<td class=\"address\">.*<a href=\"/order/view/\\d*\">(.*)</a>";
-									Pattern rAddress = Pattern.compile(patternAddress);
+									String patternAddress = "<td class=\"address\">.*?<a href=\"/order/view/\\d*\">(.*?)</a>";
+									Pattern rAddress = Pattern.compile(patternAddress, Pattern.DOTALL);
 									Matcher mAddress = rAddress.matcher(route);
 									if(mAddress.find()) {
-										address = mAddress.group(1);
+										address = mAddress.group(1).replaceAll("\\s+", " ");
 									}
 									// добавляем
-									LinearLayout llRoute = new LinearLayout(this);
+									llRoute = new LinearLayout(self);
+									llRoute.setOrientation(LinearLayout.HORIZONTAL);
 									llRoutes.addView(llRoute);
-									TextView twRoute = new TextView(this);
+									twRoute = new TextView(self);
 									twRoute.setText("!!! - " + i + " - " + time + " - " + address);
 									llRoute.addView(twRoute);
-									Button bRoute = new Button(this);
+									bRoute = new Button(self);
 									bRoute.setText("Взять");
 									llRoute.addView(bRoute);
 									i++;
 								}
 							}
-						}*/
+						}//*/
 					}
+					// лог - begin
+					llRoute = new LinearLayout(self);
+					llRoutes.addView(llRoute);
+					twRoute = new TextView(self);
+					twRoute.setText("END");
+					llRoute.addView(twRoute);
+					// лог - end
 				}
 			}.execute(urlStr);
 			//String[] table = content.split("<table id=\"terminal\">");
